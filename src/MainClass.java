@@ -1,4 +1,5 @@
 import javax.swing.*;
+import java.awt.*;
 import java.io.File;
 
 public class MainClass {
@@ -14,6 +15,8 @@ public class MainClass {
         File picture = new File(fc.getSelectedFile().getAbsolutePath());
 
         Fenster f = new Fenster(picture);
+
+
 
 
     }

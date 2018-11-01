@@ -2,98 +2,82 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.awt.event.MouseMotionListener;
 import java.io.File;
 import java.util.Scanner;
 
 public class Fenster extends JFrame {
 
-    File f;
-    JLabel iconLabel;
-    Graphics2D g2;
+    private File f;
+    private JLabel iconLabel;
+    private Graphics2D g2;
 
-    int clickcounter;
+    private Point points[] = new Point[6];
+    private Point axisPoints[] = new Point[4];
+    private Point origin = new Point();
 
-    Point points[] = new Point[6];
-    double wq1;
-    double wq2;
-    double wp1;
-    double wp2;
+    private Point mousePos = new Point();
+    private boolean moving[] = new boolean[4];
 
-    double alpha;
+    private double pointValues[] = new double[4];
+    private double wq1;
+    private double wq2;
+    private double wp1;
+    private double wp2;
+
+    private double alpha;
 
     Scanner s = new Scanner(System.in);
 
 
     public Fenster(File f) {
+
         this.f = f;
         iconLabel = new JLabel(new ImageIcon(f.getAbsolutePath()));
         add(iconLabel);
 
-        for (int i = 0; i < points.length; i++) {
-            points[i] = new Point();
+        for (int i = 0; i < axisPoints.length; i++) {
+            axisPoints[i] = new Point();
         }
 
-        System.out.println("Click on first point on the X-axis.");
+        axisPoints[0] = new Point(150, 200); //X1
+        axisPoints[1] = new Point(200, 200); //X2
+        axisPoints[2] = new Point(175, 250); //Y1
+        axisPoints[3] = new Point(175, 150); //Y2
 
-           MouseListener ml = new MouseListener() {
+
+        MouseMotionListener mml = new MouseMotionListener() {
+            @Override
+            public void mouseDragged(MouseEvent e) {
+
+            }
+
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                if (!moving[0] && !moving[1] && !moving[2] && !moving[3]) return;
+                mousePos = e.getPoint();
+                if (moving[0]) axisPoints[0] = e.getPoint();
+                if (moving[1]) axisPoints[1] = e.getPoint();
+                if (moving[2]) axisPoints[2] = e.getPoint();
+                if (moving[3]) axisPoints[3] = e.getPoint();
+                repaint();
+            }
+        };
+
+        MouseListener ml = new MouseListener() {
             @Override
             public void mouseClicked(MouseEvent e) {
 
             }
 
-
             @Override
             public void mousePressed(MouseEvent e) {
-
-                if (clickcounter == 1) {
-                    points[0].x = e.getLocationOnScreen().x - getX();
-                    points[0].y = getHeight() - (e.getLocationOnScreen().y - getY());
-
-                    System.out.println("First point on X-axis: " + points[0].toString());
-                    System.out.println("Enter x-value at this point:");
-                    wq1 = s.nextDouble();
-                    clickcounter++;
-                    System.out.println("Click on second point on the X-axis.");
-                }
-                if (clickcounter == 2) {
-                    points[1].x = e.getLocationOnScreen().x - getX();
-                    points[1].y = getHeight() - (e.getLocationOnScreen().y - getY());
-
-                    System.out.println("Second point on X-axis: " + points[1].toString());
-                    System.out.println("Enter x-value at this point:");
-                    wq2 = s.nextDouble();
-                    clickcounter++;
-                    System.out.println("Click on first point on the Y-axis.");
-                }
-                if (clickcounter == 3) {
-                    points[2].x = e.getLocationOnScreen().x - getX();
-                    points[2].y = getHeight() - (e.getLocationOnScreen().y - getY());
-
-                    System.out.println("First point on Y-axis: " + points[2].toString());
-                    System.out.println("Enter y-value at this point:");
-                    wp1 = s.nextDouble();
-                    clickcounter++;
-                    System.out.println("Click on second point on the Y-axis.");
-                }
-                if (clickcounter == 4) {
-                    points[3].x = e.getLocationOnScreen().x - getX();
-                    points[3].y = getHeight() - (e.getLocationOnScreen().y - getY());
-
-                    System.out.println("Second point on Y-axis: " + points[3].toString());
-                    System.out.println("Enter y-value at this point:");
-                    wp2 = s.nextDouble();
-                    clickcounter++;
-                    points[4] = calcOrigin();
-                    System.out.println("Origin: " + points[4].toString());
-                    System.out.println("Click onto a wanted point");
-                }
-
-                if (clickcounter > 5) {
-
-                    points[5].x = e.getLocationOnScreen().x - getX();
-                    points[5].y = getHeight() - (e.getLocationOnScreen().y - getY());
-
-                    constructCoordinateSystem();
+                mousePos.setLocation(e.getLocationOnScreen().x - getX(), e.getLocationOnScreen().y - getY());
+                for (int i = 0; i < axisPoints.length; i++) {
+                    if (clickedaroundpoint(mousePos) == axisPoints[i]) {
+                        moving[i] = !moving[i];
+                        System.out.println("moving[" + i + "] has changed to " + moving[i]);
+                    }
                 }
 
             }
@@ -116,7 +100,7 @@ public class Fenster extends JFrame {
 
 
         this.addMouseListener(ml);
-
+        this.addMouseMotionListener(mml);
         setSize(iconLabel.getIcon().getIconWidth(), iconLabel.getIcon().getIconHeight());
         setTitle("FlamingoBall");
         setResizable(false);
@@ -127,39 +111,38 @@ public class Fenster extends JFrame {
     }
 
     private Point calcOrigin() {
-        //Function spanning from points[0] to points[1] f = k*x+d
+        //Function spanning from axisPoints[0] to axisPoints[1] f = k*x+d
         double k;
         double d;
-        //Function spanning from points[2] to points[3] g = m*x+h
+        //Function spanning from axisPoints[2] to axisPoints[3] g = m*x+h
         double m;
         double h;
 
         double x;
         double y;
 
-        Point pointA = points[0];
-        Point pointB = points[1];
-        Point pointC = points[2];
-        Point pointD = points[3];
-        
-        if (pointA.x == pointB.x) {
-            m = (pointC.y - pointD.y) / (pointC.x - pointD.y);
-            h = pointC.y - m * pointC.x;
-            y = m * pointA.x + h;
+        if (axisPoints[0].x == axisPoints[1].x) {
+            m = ((double) axisPoints[2].y - (double) axisPoints[3].y) / ((double) axisPoints[2].x - (double) axisPoints[3].y);
+            h = axisPoints[2].y - m * axisPoints[2].x;
+            y = m * axisPoints[0].x + h;
 
-            return new Point(pointA.x, (int) y);
-        } else if (pointC.x == pointD.x) {
-            k = (pointB.y - pointA.y) / (pointB.x - pointA.x);
-            d = pointA.y - k * pointA.x;
-            y = k * pointC.x + d;
-            return new Point(pointC.x, (int) y);
+            return new Point(axisPoints[0].x, (int) y);
+        } else if (axisPoints[2].x == axisPoints[3].x) {
+            k = ((double) axisPoints[1].y - axisPoints[0].y) / ((double) axisPoints[1].x - (double) axisPoints[0].x);
+            d = axisPoints[0].y - k * axisPoints[0].x;
+            y = k * axisPoints[2].x + d;
+            return new Point(axisPoints[2].x, (int) y);
+
+        } else if (axisPoints[2].x == axisPoints[3].x && axisPoints[0].y == axisPoints[1].y) {
+
+            return new Point(axisPoints[2].x, axisPoints[0].y);
         } else {
             System.out.println("No exceptions");
-            k = (pointB.y - pointA.y) / (pointB.x - pointA.x);
-            d = pointA.y - k * pointA.x;
+            k = ((double) axisPoints[1].y - (double) axisPoints[0].y) / ((double) axisPoints[1].x - (double) axisPoints[0].x);
+            d = axisPoints[0].y - k * axisPoints[0].x;
 
-            m = (pointC.y - pointD.y) / (pointC.x - pointD.x);
-            h = pointC.y - m * pointC.x;
+            m = ((double) axisPoints[2].y - (double) axisPoints[3].y) / ((double) axisPoints[2].x - (double) axisPoints[3].x);
+            h = axisPoints[2].y - m * axisPoints[2].x;
 
             x = (d - h) / (m - k);
             y = k * x + d;
@@ -169,16 +152,61 @@ public class Fenster extends JFrame {
     }
 
 
-    public void paintComponent(Graphics g) {
+    public void paint(Graphics g) {
         super.paintComponents(g);
-
         g2 = (Graphics2D) g;
+        g2.setColor(Color.RED);
+
+        g2.fillOval(axisPoints[0].x, axisPoints[0].y, 7, 7);
+        g2.fillOval(axisPoints[1].x, axisPoints[1].y, 7, 7);
+
+        g2.fillOval(axisPoints[2].x, axisPoints[2].y, 7, 7);
+        g2.fillOval(axisPoints[3].x, axisPoints[3].y, 7, 7);
+
+        drawAxis(axisPoints[0], axisPoints[1]);
+        drawAxis(axisPoints[2],axisPoints[3]);
+        for (int i = 0; i < axisPoints.length; i++) {
+            if (moving[i]) {
+                g2.fillOval(mousePos.x, mousePos.y, 7, 7);
+            }
+        }
+
+    }
+
+    private Point clickedaroundpoint(Point clicked) {
+        for (int i = 0; i < axisPoints.length; i++) {
+            if (Point.distance(axisPoints[i].x, axisPoints[i].y, clicked.x, clicked.y) <= 5) {
+                System.out.println(axisPoints[i].toString());
+                return axisPoints[i];
+            }
+        }
+        return null;
+//if (Point.distance(axisPoints[0].x, axisPoints[0].y, clicked.x, clicked.y) <= 5)
+    }
+
+    void drawAxis(Point x1, Point x2) {
+
+        if (x1.x != x2.x && x1.y != x2.y) {
+            double k = ((double) x2.y - (double) x1.y) / ((double) x2.x - (double) x1.x);
+            double d = x1.y - k * x1.x;
+
+            int s1y = (int) (k * getX() + d);
+
+
+            g2.drawLine(0, (int) d + 2, getX(), s1y + 2);
+        } else if (x1.y == x2.y) {
+            g2.drawLine(0, x1.y + 2, getX(), x1.y + 2);
+        } else if (x1.x == x2.x) {
+            g2.drawLine(x1.x, 0, x1.x, this.getHeight());
+        }
+        origin = calcOrigin();
+        g2.fillOval(origin.x-2,origin.y-2,7,7);
 
     }
 
     private void constructCoordinateSystem() {
 
-        alpha = Math.atan((double) (points[0].y - points[1].y) / (double) (points[0].x - points[1].x));
+        alpha = Math.atan((double) (axisPoints[0].y - axisPoints[1].y) / (double) (axisPoints[0].x - axisPoints[1].x));
         for (int i = 0; i < points.length; i++) {
             if (i != 4) {
                 points[i].x -= points[4].x;
@@ -200,8 +228,8 @@ public class Fenster extends JFrame {
 
         rotatePoints();
 
-        int lengthX = points[1].x;
-        int lengthY = points[2].y;
+        int lengthX = axisPoints[1].x;
+        int lengthY = axisPoints[2].y;
 
         double wantedX = (wq2 * points[5].x) / (lengthX);
         double wantedY = (wp1 * points[5].y) / (lengthY);
